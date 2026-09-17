@@ -51,11 +51,24 @@ interface CartContextValue {
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
+const GUEST_KEY = "kenakata_cart_v1_guest";
 
-// One cart per identity: "guest" when logged out, the user's own id when logged in.
-// This is what prevents User A's items from leaking into User B's session.
 function getStorageKey(userId: number | string | undefined) {
-  return userId ? `kenakata_cart_v1_${userId}` : "kenakata_cart_v1_guest";
+  return userId ? `kenakata_cart_v1_${userId}` : GUEST_KEY;
+}
+
+// Combine two carts, summing quantities for any product present in both.
+function mergeCarts(a: CartItem[], b: CartItem[]): CartItem[] {
+  const merged = [...a];
+  for (const item of b) {
+    const existing = merged.find((i) => i.productId === item.productId);
+    if (existing) {
+      existing.quantity += item.quantity;
+    } else {
+      merged.push({ ...item });
+    }
+  }
+  return merged;
 }
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
@@ -63,29 +76,48 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, dispatch] = useReducer(cartReducer, []);
   const [isHydrated, setIsHydrated] = useState(false);
   const currentKeyRef = useRef<string | null>(null);
+  const previousUserRef = useRef<string | number | undefined>(undefined);
 
   const storageKey = getStorageKey(user?.id);
 
-  // Re-hydrate whenever the effective identity changes (login, logout, or
-  // switching between two different accounts on the same browser).
-  // Waits for auth to finish resolving first, so we don't briefly load the
-  // guest cart before the real user is known on page refresh.
   useEffect(() => {
     if (authLoading) return;
-    if (currentKeyRef.current === storageKey) return; // no actual identity change
+    if (currentKeyRef.current === storageKey) return;
 
-    currentKeyRef.current = storageKey;
+    const wasGuest = previousUserRef.current === undefined;
+    const isNowLoggedIn = user?.id !== undefined;
+
     try {
-      const raw = localStorage.getItem(storageKey);
-      dispatch({ type: "HYDRATE", payload: raw ? JSON.parse(raw) : [] });
+      if (wasGuest && isNowLoggedIn) {
+        // Just logged in — merge whatever was in the guest cart into this
+        // user's own cart, then clear the guest cart so it isn't merged
+        // again on a future login from a different account.
+        const guestRaw = localStorage.getItem(GUEST_KEY);
+        const guestItems: CartItem[] = guestRaw ? JSON.parse(guestRaw) : [];
+
+        const userRaw = localStorage.getItem(storageKey);
+        const userItems: CartItem[] = userRaw ? JSON.parse(userRaw) : [];
+
+        const merged = mergeCarts(userItems, guestItems);
+        dispatch({ type: "HYDRATE", payload: merged });
+        localStorage.setItem(storageKey, JSON.stringify(merged));
+
+        if (guestItems.length > 0) {
+          localStorage.removeItem(GUEST_KEY);
+        }
+      } else {
+        const raw = localStorage.getItem(storageKey);
+        dispatch({ type: "HYDRATE", payload: raw ? JSON.parse(raw) : [] });
+      }
     } catch {
       dispatch({ type: "HYDRATE", payload: [] });
     } finally {
       setIsHydrated(true);
+      currentKeyRef.current = storageKey;
+      previousUserRef.current = user?.id;
     }
-  }, [storageKey, authLoading]);
+  }, [storageKey, authLoading, user?.id]);
 
-  // Persist under the *current* key on every change, only after initial hydration
   useEffect(() => {
     if (!isHydrated || currentKeyRef.current !== storageKey) return;
     try {
