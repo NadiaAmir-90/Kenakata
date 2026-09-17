@@ -29,6 +29,10 @@ export default async function ProductsPage({ searchParams }: PageProps) {
     offset: 0,
   });
 
+    const searched = params.q
+    ? products.filter((p) => p.title.toLowerCase().includes(params.q!.toLowerCase()))
+    : products;
+
   const sorted = [...products].sort((a, b) => {
     if (params.sort === "price-asc") return a.price - b.price;
     if (params.sort === "price-desc") return b.price - a.price;
