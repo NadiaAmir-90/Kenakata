@@ -4,7 +4,17 @@
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { ShoppingCart, User, Menu, X, Search, Home, LogOut, LogIn, UserPlus } from "lucide-react";
+import {
+  ShoppingCart,
+  User,
+  Menu,
+  X,
+  Search,
+  Home,
+  LogOut,
+  LogIn,
+  UserPlus,
+} from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import UserAvatar from "@/components/ui/UserAvatar";
@@ -26,11 +36,17 @@ export default function Navbar() {
   const { itemCount } = useCart();
   const { user, logout } = useAuth();
 
-  const loginHref = pathname === "/login" ? "/login" : `/login?redirect=${encodeURIComponent(pathname)}`;
+  const loginHref =
+    pathname === "/login"
+      ? "/login"
+      : `/login?redirect=${encodeURIComponent(pathname)}`;
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+      if (
+        userMenuRef.current &&
+        !userMenuRef.current.contains(e.target as Node)
+      ) {
         setUserMenuOpen(false);
       }
     }
@@ -47,7 +63,14 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-40 border-b border-gray-800 bg-gray-900 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
-        <Link href="/" className="flex items-center gap-1 text-xl font-bold">
+        <Link
+          href="/"
+          onClick={(e) => {
+            e.preventDefault();
+            window.location.href = "/"; // full page reload, always lands at the top
+          }}
+          className="flex items-center gap-1 text-xl font-bold"
+        >
           <Home className="h-5 w-5 text-white" />
           <span className="text-white">Kena</span>
           <span className="text-emerald-600">Kata</span>
@@ -86,7 +109,11 @@ export default function Navbar() {
               aria-label="Account menu"
               className="flex items-center justify-center rounded-full hover:opacity-80"
             >
-              {user ? <UserAvatar name={user.name} /> : <User className="h-5 w-5" />}
+              {user ? (
+                <UserAvatar name={user.name} />
+              ) : (
+                <User className="h-5 w-5" />
+              )}
             </button>
 
             {userMenuOpen && (
@@ -95,7 +122,9 @@ export default function Navbar() {
                   <>
                     <div className="flex items-center gap-2 border-b border-gray-700 px-4 py-2">
                       <UserAvatar name={user.name} size="h-6 w-6" />
-                      <span className="text-sm font-medium text-white">{user.name}</span>
+                      <span className="text-sm font-medium text-white">
+                        {user.name}
+                      </span>
                     </div>
                     <button
                       onClick={handleLogout}
@@ -129,8 +158,15 @@ export default function Navbar() {
             )}
           </div>
 
-          <button className="md:hidden" onClick={() => setMobileOpen((v) => !v)}>
-            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          <button
+            className="md:hidden"
+            onClick={() => setMobileOpen((v) => !v)}
+          >
+            {mobileOpen ? (
+              <X className="h-5 w-5" />
+            ) : (
+              <Menu className="h-5 w-5" />
+            )}
           </button>
         </div>
       </div>
@@ -138,7 +174,11 @@ export default function Navbar() {
       {mobileOpen && (
         <div className="flex flex-col gap-3 border-t border-gray-800 bg-gray-900 px-4 py-3 text-white md:hidden">
           {CATEGORY_LINKS.map((c) => (
-            <Link key={c.id} href={`/products?categoryId=${c.id}`} onClick={() => setMobileOpen(false)}>
+            <Link
+              key={c.id}
+              href={`/products?categoryId=${c.id}`}
+              onClick={() => setMobileOpen(false)}
+            >
               {c.label}
             </Link>
           ))}
