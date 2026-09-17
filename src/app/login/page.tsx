@@ -1,33 +1,69 @@
 // src/app/login/page.tsx
 "use client";
 
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useState, ChangeEvent, FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { useState } from "react";
 import toast from "react-hot-toast";
-import { loginSchema, LoginFormData } from "@/lib/validations/auth";
 import { useAuth } from "@/context/AuthContext";
+
+interface LoginValues {
+  email: string;
+  password: string;
+}
+
+type LoginErrors = Partial<Record<keyof LoginValues, string>>;
+
+function validateField(name: keyof LoginValues, value: string): string | undefined {
+  if (name === "email") {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) ? undefined : "Invalid email address";
+  }
+  if (name === "password") {
+    return value.length < 6 ? "Password must be at least 6 characters" : undefined;
+  }
+  return undefined;
+}
 
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login } = useAuth();
+
+  const [values, setValues] = useState<LoginValues>({ email: "", password: "" });
+  const [errors, setErrors] = useState<LoginErrors>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<LoginFormData>({ resolver: zodResolver(loginSchema) });
+  function handleChange(e: ChangeEvent<HTMLInputElement>) {
+    const { name, value } = e.target;
+    setValues((prev) => ({ ...prev, [name]: value }));
+    if (errors[name as keyof LoginValues]) {
+      setErrors((prev) => ({ ...prev, [name]: undefined }));
+    }
+  }
 
-  async function onSubmit(data: LoginFormData) {
+  function handleBlur(e: ChangeEvent<HTMLInputElement>) {
+    const { name, value } = e.target;
+    setErrors((prev) => ({ ...prev, [name]: validateField(name as keyof LoginValues, value) }));
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
     setServerError(null);
+
+    const newErrors: LoginErrors = {
+      email: validateField("email", values.email),
+      password: validateField("password", values.password),
+    };
+    setErrors(newErrors);
+    if (Object.values(newErrors).some(Boolean)) {
+      toast.error("Please fix the errors before continuing.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      await login(data);
+      await login(values);
       toast.success("Welcome back!");
       router.push(searchParams.get("redirect") || "/");
     } catch (err) {
@@ -43,19 +79,29 @@ export default function LoginPage() {
     <div className="mx-auto max-w-sm px-4 py-20">
       <h1 className="mb-6 text-2xl font-semibold">Log In</h1>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <input {...register("email")} placeholder="Email" className="w-full rounded-md border px-3 py-2 text-sm" />
-          {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email.message}</p>}
+          <input
+            name="email"
+            value={values.email}
+            onChange={handleChange}
+            onBlur={handleBlur}
+            placeholder="Email"
+            className="w-full rounded-md border px-3 py-2 text-sm"
+          />
+          {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email}</p>}
         </div>
         <div>
           <input
-            {...register("password")}
+            name="password"
             type="password"
+            value={values.password}
+            onChange={handleChange}
+            onBlur={handleBlur}
             placeholder="Password"
             className="w-full rounded-md border px-3 py-2 text-sm"
           />
-          {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password.message}</p>}
+          {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password}</p>}
         </div>
 
         {serverError && <p className="text-sm text-red-500">{serverError}</p>}
@@ -76,10 +122,7 @@ export default function LoginPage() {
         </Link>
       </p>
 
-      {/* Handy for testing against the live API's seeded accounts */}
-      <p className="mt-2 text-center text-xs text-gray-400">
-        Test login: john@mail.com / changeme
-      </p>
+      <p className="mt-2 text-center text-xs text-gray-400">Test login: john@mail.com / changeme</p>
     </div>
   );
 }

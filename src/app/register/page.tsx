@@ -1,41 +1,88 @@
 // src/app/register/page.tsx
 "use client";
 
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useState, ChangeEvent, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useState } from "react";
 import toast from "react-hot-toast";
-import { registerSchema, RegisterFormData } from "@/lib/validations/auth";
 import { register as registerRequest } from "@/services/auth.service";
 import { useAuth } from "@/context/AuthContext";
 import { ApiError } from "@/services/api";
 
+interface RegisterValues {
+  name: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+}
+
+type RegisterErrors = Partial<Record<keyof RegisterValues, string>>;
+
+function validateField(name: keyof RegisterValues, value: string, allValues: RegisterValues): string | undefined {
+  switch (name) {
+    case "name":
+      return value.trim().length < 2 ? "Name is too short" : undefined;
+    case "email":
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) ? undefined : "Invalid email address";
+    case "password":
+      return value.length < 6 ? "Password must be at least 6 characters" : undefined;
+    case "confirmPassword":
+      return value !== allValues.password ? "Passwords do not match" : undefined;
+    default:
+      return undefined;
+  }
+}
+
+const EMPTY: RegisterValues = { name: "", email: "", password: "", confirmPassword: "" };
+
 export default function RegisterPage() {
   const router = useRouter();
   const { login } = useAuth();
+
+  const [values, setValues] = useState<RegisterValues>(EMPTY);
+  const [errors, setErrors] = useState<RegisterErrors>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const {
-    register: registerField,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<RegisterFormData>({ resolver: zodResolver(registerSchema) });
+  function handleChange(e: ChangeEvent<HTMLInputElement>) {
+    const { name, value } = e.target;
+    const next = { ...values, [name]: value };
+    setValues(next);
+    if (errors[name as keyof RegisterValues]) {
+      setErrors((prev) => ({ ...prev, [name]: undefined }));
+    }
+  }
 
-  async function onSubmit(data: RegisterFormData) {
+  function handleBlur(e: ChangeEvent<HTMLInputElement>) {
+    const { name, value } = e.target;
+    setErrors((prev) => ({ ...prev, [name]: validateField(name as keyof RegisterValues, value, values) }));
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
     setServerError(null);
+
+    const newErrors: RegisterErrors = {
+      name: validateField("name", values.name, values),
+      email: validateField("email", values.email, values),
+      password: validateField("password", values.password, values),
+      confirmPassword: validateField("confirmPassword", values.confirmPassword, values),
+    };
+    setErrors(newErrors);
+    if (Object.values(newErrors).some(Boolean)) {
+      toast.error("Please fix the errors before continuing.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await registerRequest({
-        name: data.name,
-        email: data.email,
-        password: data.password,
-        avatar: "https://i.imgur.com/LDOO4Qs.jpg", // Platzi requires a valid image URL on signup
+        name: values.name,
+        email: values.email,
+        password: values.password,
+        avatar: "https://i.imgur.com/LDOO4Qs.jpg",
       });
-      // auto-login right after successful registration
-      await login({ email: data.email, password: data.password });
+      await login({ email: values.email, password: values.password });
       toast.success("Account created!");
       router.push("/");
     } catch (err) {
@@ -54,32 +101,52 @@ export default function RegisterPage() {
     <div className="mx-auto max-w-sm px-4 py-20">
       <h1 className="mb-6 text-2xl font-semibold">Create Account</h1>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <input {...registerField("name")} placeholder="Full name" className="w-full rounded-md border px-3 py-2 text-sm" />
-          {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name.message}</p>}
-        </div>
-        <div>
-          <input {...registerField("email")} placeholder="Email" className="w-full rounded-md border px-3 py-2 text-sm" />
-          {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email.message}</p>}
+          <input
+            name="name"
+            value={values.name}
+            onChange={handleChange}
+            onBlur={handleBlur}
+            placeholder="Full name"
+            className="w-full rounded-md border px-3 py-2 text-sm"
+          />
+          {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name}</p>}
         </div>
         <div>
           <input
-            {...registerField("password")}
+            name="email"
+            value={values.email}
+            onChange={handleChange}
+            onBlur={handleBlur}
+            placeholder="Email"
+            className="w-full rounded-md border px-3 py-2 text-sm"
+          />
+          {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email}</p>}
+        </div>
+        <div>
+          <input
+            name="password"
             type="password"
+            value={values.password}
+            onChange={handleChange}
+            onBlur={handleBlur}
             placeholder="Password"
             className="w-full rounded-md border px-3 py-2 text-sm"
           />
-          {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password.message}</p>}
+          {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password}</p>}
         </div>
         <div>
           <input
-            {...registerField("confirmPassword")}
+            name="confirmPassword"
             type="password"
+            value={values.confirmPassword}
+            onChange={handleChange}
+            onBlur={handleBlur}
             placeholder="Confirm password"
             className="w-full rounded-md border px-3 py-2 text-sm"
           />
-          {errors.confirmPassword && <p className="mt-1 text-xs text-red-500">{errors.confirmPassword.message}</p>}
+          {errors.confirmPassword && <p className="mt-1 text-xs text-red-500">{errors.confirmPassword}</p>}
         </div>
 
         {serverError && <p className="text-sm text-red-500">{serverError}</p>}

@@ -2,8 +2,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { ShoppingCart, User, Menu, X, Search, Home } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { ShoppingCart, User, Menu, X, Search, Home, LogOut, LogIn, UserPlus } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 
@@ -16,12 +17,34 @@ const CATEGORY_LINKS = [
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
+  const pathname = usePathname();
+  const router = useRouter();
   const { itemCount } = useCart();
   const { user, logout } = useAuth();
 
+  const loginHref = pathname === "/login" ? "/login" : `/login?redirect=${encodeURIComponent(pathname)}`;
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  function handleLogout() {
+    logout();
+    setUserMenuOpen(false);
+    router.push("/");
+  }
+
   return (
-    <header className="sticky top-0 z-40 border-b bg-gray-900 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-gray-800 bg-gray-900 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
         <Link href="/" className="flex items-center gap-1 text-xl font-bold">
           <Home className="h-5 w-5 text-white" />
@@ -34,14 +57,14 @@ export default function Navbar() {
             <Link
               key={c.id}
               href={`/products?categoryId=${c.id}`}
-              className="text-sm text-emerald-600 hover:text-white-600"
+              className="text-sm text-emerald-500 hover:text-white"
             >
               {c.label}
             </Link>
           ))}
         </nav>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 text-white">
           <Link href="/products" aria-label="Search products">
             <Search className="h-5 w-5" />
           </Link>
@@ -55,54 +78,88 @@ export default function Navbar() {
             )}
           </Link>
 
-          {user ? (
-            <div className="hidden items-center gap-2 md:flex">
-              <span className="text-sm">{user.name}</span>
-              <button
-                onClick={logout}
-                className="text-sm text-gray-500 hover:text-gray-900"
-              >
-                Logout
-              </button>
-            </div>
-          ) : (
-            <Link href="/login" className="hidden md:block" aria-label="Login">
+          {/* User icon + dropdown */}
+          <div className="relative hidden md:block" ref={userMenuRef}>
+            <button
+              onClick={() => setUserMenuOpen((v) => !v)}
+              aria-label="Account menu"
+              className="flex items-center justify-center rounded-full p-1 hover:bg-gray-800"
+            >
               <User className="h-5 w-5" />
-            </Link>
-          )}
+            </button>
 
-          <button
-            className="md:hidden"
-            onClick={() => setMobileOpen((v) => !v)}
-          >
-            {mobileOpen ? (
-              <X className="h-5 w-5" />
-            ) : (
-              <Menu className="h-5 w-5" />
+            {userMenuOpen && (
+              <div className="absolute right-0 mt-2 w-48 rounded-md border border-gray-700 bg-gray-900 py-1 shadow-lg">
+                {user ? (
+                  <>
+                    <div className="border-b border-gray-700 px-4 py-2 text-sm text-gray-400">
+                      Signed in as <span className="font-medium text-white">{user.name}</span>
+                    </div>
+                    <button
+                      onClick={handleLogout}
+                      className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-200 hover:bg-gray-800"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Logout
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      href={loginHref}
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2 text-sm text-gray-200 hover:bg-gray-800"
+                    >
+                      <LogIn className="h-4 w-4" />
+                      Login
+                    </Link>
+                    <Link
+                      href="/register"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2 text-sm text-gray-200 hover:bg-gray-800"
+                    >
+                      <UserPlus className="h-4 w-4" />
+                      Register
+                    </Link>
+                  </>
+                )}
+              </div>
             )}
+          </div>
+
+          <button className="md:hidden" onClick={() => setMobileOpen((v) => !v)}>
+            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </div>
       </div>
 
       {mobileOpen && (
-        <div className="flex flex-col gap-3 border-t bg-gray-900 px-4 py-3 md:hidden">
+        <div className="flex flex-col gap-3 border-t border-gray-800 bg-gray-900 px-4 py-3 text-white md:hidden">
           {CATEGORY_LINKS.map((c) => (
-            <Link
-              key={c.id}
-              href={`/products?categoryId=${c.id}`}
-              onClick={() => setMobileOpen(false)}
-            >
+            <Link key={c.id} href={`/products?categoryId=${c.id}`} onClick={() => setMobileOpen(false)}>
               {c.label}
             </Link>
           ))}
           {user ? (
-            <button onClick={logout} className="text-left text-white-500">
+            <button
+              onClick={() => {
+                logout();
+                setMobileOpen(false);
+                router.push("/");
+              }}
+              className="text-left text-gray-400"
+            >
               Logout ({user.name})
             </button>
           ) : (
-            <Link href="/login" onClick={() => setMobileOpen(false)}>
-              Login
-            </Link>
+            <>
+              <Link href={loginHref} onClick={() => setMobileOpen(false)}>
+                Login
+              </Link>
+              <Link href="/register" onClick={() => setMobileOpen(false)}>
+                Register
+              </Link>
+            </>
           )}
         </div>
       )}

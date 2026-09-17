@@ -43,7 +43,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 
 
-<div align="center">
+<<div align="center">
 
 # 🛍️ KenaKata.com
 
@@ -52,8 +52,6 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 [![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
-[![React Hook Form](https://img.shields.io/badge/React_Hook_Form-EC5990?style=for-the-badge&logo=reacthookform&logoColor=white)](https://react-hook-form.com/)
-[![Zod](https://img.shields.io/badge/Zod-3E67B1?style=for-the-badge&logo=zod&logoColor=white)](https://zod.dev/)
 [![Vercel](https://img.shields.io/badge/Deployed_on-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://vercel.com/)
 
 Powered by the [Platzi Fake Store API](https://api.escuelajs.co/api/v1)
@@ -95,16 +93,17 @@ A capstone project demonstrating scalable frontend architecture, modern Next.js 
 
 **Cart & Checkout**
 - Persistent cart (add/remove/update quantity/clear) backed by `localStorage`, hydrated safely on mount to avoid SSR/client mismatches
-- Checkout form with React Hook Form + Zod validation (shipping address + mock card details)
+- Checkout form with manually implemented validation (controlled inputs + a hand-written per-field validator) covering shipping address and mock card details — no form/schema library
 - Step indicator (Shipping → Payment → Confirmation) and a mock payment flow with simulated success/failure states
 - Checkout form drafts persist across auth interruptions — if a user is redirected to log in mid-checkout, their typed fields are restored automatically on return
 
 **Authentication**
-- Login and registration against the live Platzi Fake Store auth endpoints
+- Login and registration against the live Platzi Fake Store auth endpoints, both with the same manual validation approach as checkout
 - Session persistence via token + profile fetch on app load
 - Logout
 - Two-layer route protection: middleware blocks unauthenticated navigation to protected routes, and a client-side auth guard inside the checkout page itself catches the case where a user logs out *while already on* a protected page (middleware alone only fires on navigation, not on client-side state changes)
 - Context-aware login redirects: whichever page a user was on when prompted to log in (cart, checkout, etc.) is where they return to after a successful login
+- User menu redesigned as a single account icon in the navbar that opens a dropdown (Login/Register when logged out, profile name + Logout when logged in), closed on outside click
 
 ---
 
@@ -115,7 +114,7 @@ A capstone project demonstrating scalable frontend architecture, modern Next.js 
 | Framework | Next.js (App Router) |
 | Language | TypeScript |
 | Styling | Tailwind CSS |
-| Forms & Validation | React Hook Form + Zod |
+| Forms & Validation | Manual — controlled components + hand-written field validators (no form/schema library) |
 | State Management | React Context API (`CartContext`, `AuthContext`) |
 | Icons | lucide-react |
 | Notifications | react-hot-toast |
@@ -173,9 +172,8 @@ src/
     AuthContext.tsx
   lib/
     safe-image.ts              # Trusted-hostname + image-shape validation
-    validations/                # Zod schemas (checkout, auth)
   hooks/
-    use-checkout-form.ts        # RHF + Zod + draft persistence
+    use-checkout-form.ts        # Manual controlled-form state, validation, and draft persistence
   types/
     index.ts                    # Product, Category, User, AuthTokens, CartItem
   middleware.ts                 # Route protection (checkout, profile, account)
@@ -202,6 +200,7 @@ src/
 - **Auth cookie is not `httpOnly`.** The token is stored in a plain, JS-readable cookie (mirrored from `localStorage`) so `middleware.ts` can check for its presence. This is weaker against XSS than an `httpOnly` cookie set from a server route handler, which was the more correct approach but required more implementation time than the deadline allowed. Documented here as a known, accepted limitation rather than an oversight.
 - **Image safety is handled by an allowlist + validator, not an ever-growing config.** The underlying API is public and write-anyone — its `images` fields regularly contain dead hosts, non-image URLs (e.g. a Google Images search-results page), and unrelated third-party domains from other users' test data. Rather than continuously expanding `next.config.ts`'s `remotePatterns` to chase this, a single `getSafeImageUrl()` validator (hostname allowlist + file-extension check) filters untrusted URLs before they ever reach `next/image`, backed by an `onError` fallback for allowlisted-but-dead links. This keeps the Next.js image security boundary meaningful instead of defeated by a wildcard.
 - **Pagination over infinite scroll.** Both satisfy the assignment; pagination was chosen because it composes naturally with the URL-search-params approach already used for search/filter/sort — the full listing state (query, category, sort, page) stays in one shareable, bookmarkable URL, rather than needing separate scroll-position state.
+- **Manual form validation instead of React Hook Form + Zod.** All forms (checkout, login, register) use controlled inputs with hand-written per-field validator functions rather than a schema library. This was a deliberate choice for consistency across every form in the app and to demonstrate first-principles form-handling. The tradeoff: weaker compile-time type safety (the form's TypeScript type and its validation rules are two separate things kept in sync by hand, rather than one Zod schema inferring both), and more repeated boilerplate per form than a schema-driven approach would need.
 - **Cart persists across login/logout independently of auth state**, by design — this matches standard e-commerce UX (a guest's cart isn't wiped by logging in), but means cart and auth are two genuinely separate state domains that both needed independent persistence and hydration logic.
 - **Checkout requires login (no guest checkout).** This was a deliberate choice to satisfy the "Protected routes" requirement meaningfully; a real store might offer guest checkout as an alternative path, which would be a straightforward addition (protect an order-history page instead) if needed later.
 
@@ -232,7 +231,7 @@ src/
 - Wishlist and product reviews (listed as optional in the assignment; not implemented under time constraints)
 - `httpOnly` cookie-based auth via a dedicated route handler, replacing the current JS-readable cookie approach
 - Guest checkout as an alternative to the current login-required flow
-- Unit tests (Vitest) for the cart reducer, checkout Zod schemas, and `getSafeImageUrl`
+- Unit tests (Vitest) for the cart reducer and form validators
 - End-to-end tests covering the auth-interrupt-during-checkout flow specifically, since it's the most state-dependent path in the app
 - Docker-based deployment process
 - Order history page (would also serve as a second protected route beyond checkout)
