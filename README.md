@@ -16,7 +16,7 @@ Powered by the [Platzi Fake Store API](https://api.escuelajs.co/api/v1)
 </div>
 ---
 
-## 📑 Table of Contents
+##  Table of Contents
 
 - [Setup Instructions](#-setup-instructions)
 - [Features](#-features)
@@ -30,7 +30,7 @@ Powered by the [Platzi Fake Store API](https://api.escuelajs.co/api/v1)
 
 ---
 
-## ⚙️ Setup Instructions
+##  Setup Instructions
 
 ```bash
 # Clone the repository
@@ -51,7 +51,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 
 
-## ✨ Features
+## Features
 
 **Public Storefront**
 - Hero, category grid, and featured products on the home page
@@ -79,7 +79,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ---
 
-## 🧰 Tech Stack
+## Tech Stack
 
 | Category | Technology |
 |---|---|
@@ -95,7 +95,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 services/  →  context/  →  components/
@@ -126,7 +126,7 @@ One-directional data flow — kept deliberately so UI could be restyled freely w
 
 ---
 
-## ⚖️ Architectural Tradeoffs
+## Architectural Tradeoffs
 
 - **Auth cookie isn't `httpOnly`** — mirrored from `localStorage` so middleware can read it; weaker against XSS than a server-set `httpOnly` cookie.
 - **Image safety via allowlist + validator, not an ever-growing config** — a single `getSafeImageUrl()` filters untrusted URLs before `next/image` sees them, backed by `onError`, instead of chasing every bad domain in `remotePatterns`.
@@ -147,7 +147,7 @@ One-directional data flow — kept deliberately so UI could be restyled freely w
 
 ---
 
-## 🧩 Challenges Faced
+##  Challenges Faced
 
 - **API base drifted from the assignment's listed URL** (`fakeapi.platzi.com` → `api.escuelajs.co`).
 - **Public, write-anyone API means no field is trustworthy by default** — required a dedicated image-safety layer (`getSafeImageUrl` + `SafeImage`) and a stable category-label override map, after live category *names* (not just images) were found vandalized by other testers.
@@ -160,7 +160,7 @@ One-directional data flow — kept deliberately so UI could be restyled freely w
 
 ---
 
-## 🔭 Future Improvements
+## Future Improvements
 
 - Wishlist and product reviews (optional in the assignment)
 - `httpOnly` cookie-based auth via a route handler
