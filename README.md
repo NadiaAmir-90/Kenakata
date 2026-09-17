@@ -15,6 +15,7 @@ Powered by the [Platzi Fake Store API](https://api.escuelajs.co/api/v1)
 
 </div>
 ---
+
 ## 📑 Table of Contents
 
 - [Setup Instructions](#-setup-instructions)
@@ -27,9 +28,8 @@ Powered by the [Platzi Fake Store API](https://api.escuelajs.co/api/v1)
 - [Challenges Faced](#-challenges-faced)
 - [Future Improvements](#-future-improvements)
 
-
-
 ---
+
 ## ⚙️ Setup Instructions
 
 ```bash
