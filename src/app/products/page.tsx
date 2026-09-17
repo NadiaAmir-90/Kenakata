@@ -52,8 +52,10 @@ export default async function ProductsPage({ searchParams }: PageProps) {
       <div className="mt-6">
         <ProductGrid products={pageItems} />
       </div>
-
-      <Pagination currentPage={page} totalPages={totalPages} />
+<Suspense> 
+  <Pagination currentPage={page} totalPages={totalPages} />
+</Suspense>
+     
     </div>
   );
 }
