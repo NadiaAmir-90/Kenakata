@@ -1,8 +1,9 @@
 // src/context/CartContext.tsx
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useReducer, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { CartItem } from "@/types";
+import { useAuth } from "@/context/AuthContext";
 
 type CartAction =
   | { type: "ADD_ITEM"; payload: Omit<CartItem, "quantity">; quantity?: number }
@@ -50,26 +51,49 @@ interface CartContextValue {
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
-const STORAGE_KEY = "kenakata_cart_v1";
+
+// One cart per identity: "guest" when logged out, the user's own id when logged in.
+// This is what prevents User A's items from leaking into User B's session.
+function getStorageKey(userId: number | string | undefined) {
+  return userId ? `kenakata_cart_v1_${userId}` : "kenakata_cart_v1_guest";
+}
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
+  const { user, isLoading: authLoading } = useAuth();
   const [items, dispatch] = useReducer(cartReducer, []);
   const [isHydrated, setIsHydrated] = useState(false);
+  const currentKeyRef = useRef<string | null>(null);
 
-  // Hydrate from localStorage once on mount (avoids SSR/client mismatch)
+  const storageKey = getStorageKey(user?.id);
+
+  // Re-hydrate whenever the effective identity changes (login, logout, or
+  // switching between two different accounts on the same browser).
+  // Waits for auth to finish resolving first, so we don't briefly load the
+  // guest cart before the real user is known on page refresh.
   useEffect(() => {
+    if (authLoading) return;
+    if (currentKeyRef.current === storageKey) return; // no actual identity change
+
+    currentKeyRef.current = storageKey;
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) dispatch({ type: "HYDRATE", payload: JSON.parse(raw) });
+      const raw = localStorage.getItem(storageKey);
+      dispatch({ type: "HYDRATE", payload: raw ? JSON.parse(raw) : [] });
+    } catch {
+      dispatch({ type: "HYDRATE", payload: [] });
     } finally {
       setIsHydrated(true);
     }
-  }, []);
+  }, [storageKey, authLoading]);
 
-  // Persist on every change, but only after initial hydration
+  // Persist under the *current* key on every change, only after initial hydration
   useEffect(() => {
-    if (isHydrated) localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-  }, [items, isHydrated]);
+    if (!isHydrated || currentKeyRef.current !== storageKey) return;
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(items));
+    } catch {
+      // storage full/unavailable — non-critical
+    }
+  }, [items, isHydrated, storageKey]);
 
   const value = useMemo<CartContextValue>(
     () => ({
