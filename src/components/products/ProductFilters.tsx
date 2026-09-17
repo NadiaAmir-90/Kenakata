@@ -50,7 +50,7 @@ export default function ProductFilters({ categories }: { categories: Category[] 
        <select
         value={currentCategoryId}
         onChange={(e) => updateParam("categoryId", e.target.value)}
-        className="rounded-md border bg-white px-3 py-2 text-sm text-gray-900"
+        className="rounded-md border bg-emerald-600 px-3 py-2 text-sm text-gray-900"
       >
         <option value="">All Categories</option>
         {categories.map((c) => (
@@ -63,7 +63,7 @@ export default function ProductFilters({ categories }: { categories: Category[] 
       <select
         defaultValue={searchParams.get("sort") ?? ""}
         onChange={(e) => updateParam("sort", e.target.value)}
-        className="rounded-md border px-3 py-2 text-sm bg-gray-900"
+        className="rounded-md border px-3 py-2 text-sm bg-emerald-600"
       >
         <option value="">Sort: Default</option>
         <option value="price-asc">Price: Low to High</option>
