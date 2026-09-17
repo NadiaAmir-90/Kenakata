@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { ShoppingCart, User, Menu, X, Search, Home, LogOut, LogIn, UserPlus } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
+import UserAvatar from "@/components/ui/UserAvatar";
 
 const CATEGORY_LINKS = [
   { label: "Clothes", id: 1 },
@@ -78,22 +79,23 @@ export default function Navbar() {
             )}
           </Link>
 
-          {/* User icon + dropdown */}
+          {/* User icon/avatar + dropdown */}
           <div className="relative hidden md:block" ref={userMenuRef}>
             <button
               onClick={() => setUserMenuOpen((v) => !v)}
               aria-label="Account menu"
-              className="flex items-center justify-center rounded-full p-1 hover:bg-gray-800"
+              className="flex items-center justify-center rounded-full hover:opacity-80"
             >
-              <User className="h-5 w-5" />
+              {user ? <UserAvatar name={user.name} /> : <User className="h-5 w-5" />}
             </button>
 
             {userMenuOpen && (
               <div className="absolute right-0 mt-2 w-48 rounded-md border border-gray-700 bg-gray-900 py-1 shadow-lg">
                 {user ? (
                   <>
-                    <div className="border-b border-gray-700 px-4 py-2 text-sm text-gray-400">
-                      Signed in as <span className="font-medium text-white">{user.name}</span>
+                    <div className="flex items-center gap-2 border-b border-gray-700 px-4 py-2">
+                      <UserAvatar name={user.name} size="h-6 w-6" />
+                      <span className="text-sm font-medium text-white">{user.name}</span>
                     </div>
                     <button
                       onClick={handleLogout}
@@ -147,8 +149,9 @@ export default function Navbar() {
                 setMobileOpen(false);
                 router.push("/");
               }}
-              className="text-left text-gray-400"
+              className="flex items-center gap-2 text-left text-gray-400"
             >
+              <UserAvatar name={user.name} size="h-5 w-5" />
               Logout ({user.name})
             </button>
           ) : (
