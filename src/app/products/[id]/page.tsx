@@ -6,16 +6,28 @@ import AddToCartButton from "@/components/products/AddToCartButton";
 import ProductGrid from "@/components/products/ProductGrid";
 import { ApiError } from "@/services/api";
 
-export const revalidate = 60; // ISR fallback for products not pre-built
+export const revalidate = 60;
 
 export async function generateStaticParams() {
-  // Pre-build the first 20 products at build time; the rest fall back to ISR
   const products = await getProducts({ limit: 20 });
   return products.map((p) => ({ id: String(p.id) }));
 }
 
 interface PageProps {
   params: Promise<{ id: string }>;
+}
+
+// This API sometimes returns 400 (not 404) with an "EntityNotFoundError"
+// message for a missing product — likely because the underlying store is
+// public/write-anyone and products can be deleted between when
+// generateStaticParams lists them and when this page actually fetches one.
+// Treat both shapes as "not found" so a single vanished product can't crash
+// the entire build.
+function isNotFoundError(err: unknown): boolean {
+  if (!(err instanceof ApiError)) return false;
+  if (err.status === 404) return true;
+  if (err.status === 400 && /EntityNotFoundError|not found/i.test(err.message)) return true;
+  return false;
 }
 
 export default async function ProductDetailPage({ params }: PageProps) {
@@ -25,7 +37,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
   try {
     product = await getProductById(id);
   } catch (err) {
-    if (err instanceof ApiError && err.status === 404) notFound();
+    if (isNotFoundError(err)) notFound();
     throw err;
   }
 
