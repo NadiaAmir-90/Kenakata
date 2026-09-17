@@ -112,7 +112,7 @@ One-directional data flow — kept deliberately so UI could be restyled freely w
 
 ---
 
-## ⚡ Rendering Strategy
+##  Rendering Strategy
 
 | Page | Strategy | Why |
 |---|---|---|
@@ -137,7 +137,7 @@ One-directional data flow — kept deliberately so UI could be restyled freely w
 
 ---
 
-## 🚀 Performance Considerations
+##  Performance Considerations
 
 - `next/image` throughout for optimization, lazy loading, responsive `sizes`
 - ISR on home/category/detail avoids re-fetching every request
