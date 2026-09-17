@@ -1,7 +1,7 @@
 // src/context/CartContext.tsx
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useReducer, useState } from "react";
 import { CartItem } from "@/types";
 import { useAuth } from "@/context/AuthContext";
 
@@ -57,16 +57,12 @@ function getStorageKey(userId: number | string | undefined) {
   return userId ? `kenakata_cart_v1_${userId}` : GUEST_KEY;
 }
 
-// Combine two carts, summing quantities for any product present in both.
 function mergeCarts(a: CartItem[], b: CartItem[]): CartItem[] {
-  const merged = [...a];
+  const merged = a.map((i) => ({ ...i }));
   for (const item of b) {
     const existing = merged.find((i) => i.productId === item.productId);
-    if (existing) {
-      existing.quantity += item.quantity;
-    } else {
-      merged.push({ ...item });
-    }
+    if (existing) existing.quantity += item.quantity;
+    else merged.push({ ...item });
   }
   return merged;
 }
@@ -75,57 +71,35 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const { user, isLoading: authLoading } = useAuth();
   const [items, dispatch] = useReducer(cartReducer, []);
   const [isHydrated, setIsHydrated] = useState(false);
-  const currentKeyRef = useRef<string | null>(null);
-  const previousUserRef = useRef<string | number | undefined>(undefined);
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
 
   const storageKey = getStorageKey(user?.id);
 
+  // Plain load — no merge inference here at all, just "load whatever is
+  // saved under the current identity's key." Simple and reliable.
   useEffect(() => {
     if (authLoading) return;
-    if (currentKeyRef.current === storageKey) return;
-
-    const wasGuest = previousUserRef.current === undefined;
-    const isNowLoggedIn = user?.id !== undefined;
+    if (loadedKey === storageKey) return;
 
     try {
-      if (wasGuest && isNowLoggedIn) {
-        // Just logged in — merge whatever was in the guest cart into this
-        // user's own cart, then clear the guest cart so it isn't merged
-        // again on a future login from a different account.
-        const guestRaw = localStorage.getItem(GUEST_KEY);
-        const guestItems: CartItem[] = guestRaw ? JSON.parse(guestRaw) : [];
-
-        const userRaw = localStorage.getItem(storageKey);
-        const userItems: CartItem[] = userRaw ? JSON.parse(userRaw) : [];
-
-        const merged = mergeCarts(userItems, guestItems);
-        dispatch({ type: "HYDRATE", payload: merged });
-        localStorage.setItem(storageKey, JSON.stringify(merged));
-
-        if (guestItems.length > 0) {
-          localStorage.removeItem(GUEST_KEY);
-        }
-      } else {
-        const raw = localStorage.getItem(storageKey);
-        dispatch({ type: "HYDRATE", payload: raw ? JSON.parse(raw) : [] });
-      }
+      const raw = localStorage.getItem(storageKey);
+      dispatch({ type: "HYDRATE", payload: raw ? JSON.parse(raw) : [] });
     } catch {
       dispatch({ type: "HYDRATE", payload: [] });
     } finally {
       setIsHydrated(true);
-      currentKeyRef.current = storageKey;
-      previousUserRef.current = user?.id;
+      setLoadedKey(storageKey);
     }
-  }, [storageKey, authLoading, user?.id]);
+  }, [storageKey, authLoading, loadedKey]);
 
   useEffect(() => {
-    if (!isHydrated || currentKeyRef.current !== storageKey) return;
+    if (!isHydrated || loadedKey !== storageKey) return;
     try {
       localStorage.setItem(storageKey, JSON.stringify(items));
     } catch {
-      // storage full/unavailable — non-critical
+      // non-critical
     }
-  }, [items, isHydrated, storageKey]);
+  }, [items, isHydrated, storageKey, loadedKey]);
 
   const value = useMemo<CartContextValue>(
     () => ({
@@ -148,4 +122,24 @@ export function useCart() {
   const ctx = useContext(CartContext);
   if (!ctx) throw new Error("useCart must be used within a CartProvider");
   return ctx;
+}
+
+// Called explicitly, once, right after a successful login — not inferred
+// from render timing. Exported so AuthContext's login() can call it directly.
+export function mergeGuestCartIntoUser(userId: number | string) {
+  try {
+    const guestRaw = localStorage.getItem(GUEST_KEY);
+    const guestItems: CartItem[] = guestRaw ? JSON.parse(guestRaw) : [];
+    if (guestItems.length === 0) return;
+
+    const userKey = getStorageKey(userId);
+    const userRaw = localStorage.getItem(userKey);
+    const userItems: CartItem[] = userRaw ? JSON.parse(userRaw) : [];
+
+    const merged = mergeCarts(userItems, guestItems);
+    localStorage.setItem(userKey, JSON.stringify(merged));
+    localStorage.removeItem(GUEST_KEY);
+  } catch {
+    // non-critical — worst case, guest items are simply not carried over
+  }
 }

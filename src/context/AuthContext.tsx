@@ -4,6 +4,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { User, LoginPayload } from "@/types";
 import { login as loginRequest, getProfile } from "@/services/auth.service";
+import { mergeGuestCartIntoUser } from "@/context/CartContext"; 
 
 interface AuthContextValue {
   user: User | null;
@@ -42,6 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function login(payload: LoginPayload) {
     const { access_token } = await loginRequest(payload);
     const profile = await getProfile(access_token);
+    mergeGuestCartIntoUser(profile.id); 
     localStorage.setItem(TOKEN_KEY, access_token);
     // Mirror into a readable cookie so middleware can check auth presence.
     // NOTE (tradeoff, document in README): a plain cookie is readable by JS,
