@@ -1,7 +1,7 @@
 // src/app/login/page.tsx
 "use client";
 
-import { useState, ChangeEvent, FormEvent } from "react";
+import { Suspense, useState, ChangeEvent, FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import toast from "react-hot-toast";
@@ -24,9 +24,10 @@ function validateField(name: keyof LoginValues, value: string): string | undefin
   return undefined;
 }
 
-export default function LoginPage() {
+// Renamed from LoginPage — holds all the actual logic and JSX, unchanged.
+function LoginForm() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams(); // this line is why Suspense is needed
   const { login } = useAuth();
 
   const [values, setValues] = useState<LoginValues>({ email: "", password: "" });
@@ -124,5 +125,16 @@ export default function LoginPage() {
 
       <p className="mt-2 text-center text-xs text-gray-400">Test login: john@mail.com / changeme</p>
     </div>
+  );
+}
+
+// New default export — this is the actual page Next.js renders and prerenders.
+// Wrapping LoginForm in Suspense tells Next.js the useSearchParams()-dependent
+// part is allowed to resolve dynamically, instead of needing it at build time.
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="mx-auto max-w-sm px-4 py-20 text-center text-gray-500">Loading…</div>}>
+      <LoginForm />
+    </Suspense>
   );
 }
