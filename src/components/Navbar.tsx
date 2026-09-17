@@ -18,12 +18,12 @@ import {
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import UserAvatar from "@/components/ui/UserAvatar";
-
+import { CATEGORY_LABEL_OVERRIDES } from "@/lib/category-labels";
 const CATEGORY_LINKS = [
-  { label: "Clothes", id: 1 },
-  { label: "Electronics", id: 2 },
-  { label: "Furniture", id: 3 },
-  { label: "Shoes", id: 4 },
+  { label: CATEGORY_LABEL_OVERRIDES[1], id: 1 },
+  { label: CATEGORY_LABEL_OVERRIDES[2], id: 2 },
+  { label: CATEGORY_LABEL_OVERRIDES[3], id: 3 },
+  { label: CATEGORY_LABEL_OVERRIDES[4], id: 4 },
 ];
 
 export default function Navbar() {

@@ -4,6 +4,7 @@
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { Category } from "@/types";
+import { getCategoryLabel } from "@/lib/category-labels"; 
 
 function useDebounce<T>(value: T, delay = 400): T {
   const [debounced, setDebounced] = useState(value);
@@ -54,9 +55,9 @@ export default function ProductFilters({ categories }: { categories: Category[] 
       >
         <option value="">All Categories</option>
         {categories.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name}
-          </option>
+        <option key={c.id} value={c.id}>
+      {getCategoryLabel(c.id, c.name)}
+    </option>
         ))}
       </select>
 
